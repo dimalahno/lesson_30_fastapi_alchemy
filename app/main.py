@@ -47,8 +47,30 @@ async def create_book(book: schemas.BookCreate, db: AsyncSession = Depends(get_d
 
 # Получение всех книг
 @app.get("/api/books/", response_model=list[schemas.Book])
-async def read_books(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db_session)):
-    books = await crud.get_books(db, skip=skip, limit=limit)
+async def read_books(
+    skip: int = 0,
+    limit: int = 100,
+    book_name: str = None,
+    author: str = None,
+    genre: str = None,
+    date_from: str = None,
+    date_to: str = None,
+    price_min: float = None,
+    price_max: float = None,
+    db: AsyncSession = Depends(get_db_session)
+):
+    books = await crud.get_books(
+        db,
+        skip=skip,
+        limit=limit,
+        book_name=book_name,
+        author=author,
+        genre=genre,
+        date_from=date_from,
+        date_to=date_to,
+        price_min=price_min,
+        price_max=price_max
+    )
     return books
 
 # Получение книги по ID

@@ -166,34 +166,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Функция для загрузки и отображения всех книг
-    async function fetchBooks() {
-        try {
-            const response = await fetch('/api/books/', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const books = await response.json();
-                populateBooksTable(books);
-            } else {
-                console.error('Error fetching books');
-            }
-        } catch (error) {
-            console.error('Error fetching books:', error);
-        }
-    }
-
     // Функция для заполнения таблицы книг
     function populateBooksTable(books) {
         const tbody = document.querySelector('#books-table tbody');
-        tbody.innerHTML = ''; // Очистка существующих строк
+        tbody.innerHTML = '';
 
         if (books.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6">No books found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7">No books found</td></tr>';
             return;
         }
 
@@ -206,8 +185,93 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${book.genre}</td>
                 <td>${book.date_issue}</td>
                 <td>$${book.price.toFixed(2)}</td>
+                <td><button class="btn btn-danger btn-sm btn-delete-book" data-id="${book.id}">Delete</button></td>
             `;
             tbody.appendChild(tr);
         });
+
+        // Навешиваем обработчик на все кнопки удаления
+        document.querySelectorAll('.btn-delete-book').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const bookId = this.getAttribute('data-id');
+                if (confirm(`Are you sure you want to delete book ID ${bookId}?`)) {
+                    try {
+                        const response = await fetch(`/api/books/${bookId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        if (response.ok) {
+                            fetchBooks();
+                        } else {
+                            const error = await response.json();
+                            alert(`Error: ${error.detail}`);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting book:', error);
+                    }
+                }
+            });
+        });
+    }
+
+        // Модифицируем fetchBooks для кэширования всех книг
+    // Функция для загрузки и отображения всех книг
+    async function fetchBooks() {
+        try {
+            const response = await fetch('/api/books/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (response.ok) {
+                const books = await response.json();
+                allBooksCache = books;
+                populateBooksTable(books);
+            } else {
+                console.error('Error fetching books');
+            }
+        } catch (error) {
+            console.error('Error fetching books:', error);
+        }
+    }
+
+    // Фильтрация
+    const filterForm = document.getElementById('filter-form');
+    const resetFilterBtn = document.getElementById('reset-filter');
+    let allBooksCache = [];
+
+    filterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        applyFilter();
+    });
+
+    resetFilterBtn.addEventListener('click', function() {
+        filterForm.reset();
+        populateBooksTable(allBooksCache);
+    });
+
+    function applyFilter() {
+        let filtered = allBooksCache;
+        const name = document.getElementById('filter_book_name').value.trim().toLowerCase();
+        const author = document.getElementById('filter_author').value.trim().toLowerCase();
+        const genre = document.getElementById('filter_genre').value.trim().toLowerCase();
+        const dateFrom = document.getElementById('filter_date_from').value;
+        const dateTo = document.getElementById('filter_date_to').value;
+        const priceMin = parseFloat(document.getElementById('filter_price_min').value);
+        const priceMax = parseFloat(document.getElementById('filter_price_max').value);
+
+        if (name) filtered = filtered.filter(b => b.book_name.toLowerCase().includes(name));
+        if (author) filtered = filtered.filter(b => b.author.toLowerCase().includes(author));
+        if (genre) filtered = filtered.filter(b => b.genre.toLowerCase().includes(genre));
+        if (dateFrom) filtered = filtered.filter(b => b.date_issue >= dateFrom);
+        if (dateTo) filtered = filtered.filter(b => b.date_issue <= dateTo);
+        if (!isNaN(priceMin)) filtered = filtered.filter(b => b.price >= priceMin);
+        if (!isNaN(priceMax)) filtered = filtered.filter(b => b.price <= priceMax);
+
+        populateBooksTable(filtered);
     }
 });
